@@ -4,7 +4,7 @@ author: "Terrell Enoru"
 thanks: "Project repository available at:[https://github.com/tycebot/Modeling-population-and-spending](https://github.com/tycebot/Modeling-population-and-spending)."
 date: today
 date-format: long
-abstract: "California's rising government debt over the past decade necessitates careful examination of municipal spending efficiency. To analyze spending efficiency I use data on expenditure per capita for all california cities over the past 20 years. I use regression analysis to model the relationship between population size(the predictor) and per capita spending(the response varible). Then hypothesis testing is used on the slope to determine whether large cities benefit from economies of scale. The results were that there was not enough statistical evidence to claim that expinditure per capita decreased as population increased which is significant because it implies that the continued expansion of large cities like Los Angeles and San Francsico that serve as the State's primary economic growth engine will not result in a less efficient expenditure."
+abstract: "California's rising government debt over the past decade necessitates careful examination of municipal spending efficiency. To analyze spending efficiency I use data on expenditure per capita for all california cities over the past 20 years. I use regression analysis to model the relationship between population size(the predictor) and per capita spending(the response varible). Then hypothesis testing is used on the slope to determine whether large cities benefit from economies of scale. The results were that there was not enough statistical evidence to claim that expinditure per capita decreased as population increased which is significant because it implies that the continued expansion of large cities which serve as the State's primary economic growth engine will not result in a less efficient expenditure."
 format: pdf
 bibliography: references.bib
 number-sections: true
@@ -72,7 +72,7 @@ graph_population<-filtered_expenditure |>
 #| echo: false
 #| warning: false
 #| message: false
-#| fig-cap: "Histogram of average expenditure of each city."
+#| fig-cap: "Histogram of average expenditure of each city which appears approximately normal but right skewed."
 #creating histogram of per capita expenditure
 ggplot(data=graph_avg_expenditure,aes(x=average_expenditure_percapita))+
   geom_histogram()+
@@ -85,7 +85,7 @@ ggplot(data=graph_avg_expenditure,aes(x=average_expenditure_percapita))+
 #| echo: false
 #| warning: false
 #| message: false
-#| fig-cap: "Histogram of total expenditure of each city."
+#| fig-cap: "Histogram of total expenditure of each city which is heavily right skewed"
 #creating histogram of total expenditure
 ggplot(data=graph_total_expenditure,aes(x=average_expenditure))+
   geom_histogram()+
@@ -97,7 +97,7 @@ ggplot(data=graph_total_expenditure,aes(x=average_expenditure))+
 ```{r fig-estimated-population}
 #| warning: false
 #| message: false
-#| fig-cap: "Histogram of population of each city."
+#| fig-cap: "Histogram of population of each city which is heavily right skewed."
 #| echo: false
 #creating histogram of population
 ggplot(data=graph_population,aes(x=average_population))+
@@ -133,6 +133,7 @@ lm_fit<-lm(average_expenditure_percapita~average_population,
 round(coefficients(lm_fit)[2], 3)
 round(coefficients(lm_fit)[1], 3)
 ```
+
 The estimated slope parameter is $b_1=$ `r round(coefficients(lm_fit)[2], 3)`. In other words, for each individual added to the population the expected change in the expenditure per capita is -0.007. The estimated intercept is $b_0=$ `r round(coefficients(lm_fit)[1], 3)`. In other words the expected population of a city with no expenditure per capita is `r round(coefficients(lm_fit)[1], 3)`.
 
 ```{r hypothesis-test}
@@ -170,11 +171,44 @@ resid_index<- data.frame(
 )
 ```
 
+```{r}
+#| include: false
+##LOG TRANSFORMATION OF X SEEMS TO MAKE FUNCTION LINEAR REVISE PROJECT TO ACCOUNT FOR THIS AFTER PAPER 2 SUBMISSION ALSO FILTER TO 95% PERCENTILE FROM THE GETGO BECAUSE OF EXTREME OUTLIERS
+
+
+lm2 <- lm(average_expenditure_percapita ~ log(average_population),
+          data = graph_pop_and_expend)
+graph_pop_and_expend$fitted <- fitted(lm2)
+ggplot(graph_pop_and_expend, aes(x = log(average_population), y = average_expenditure_percapita)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  ylab("Log transformation Expenditure per capita)") +
+  xlab("Average population")
+
+lm2 <- lm(average_expenditure_percapita ~ sqrt(average_population),
+          data = graph_pop_and_expend)
+graph_pop_and_expend$fitted <- fitted(lm2)
+ggplot(graph_pop_and_expend, aes(x = sqrt(average_population), y = average_expenditure_percapita)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  ylab("Square root transformation Expenditure per capita)") +
+  xlab("Average population")
+
+lm2 <- lm(log(average_expenditure_percapita) ~ log(average_population),
+          data = graph_pop_and_expend)
+graph_pop_and_expend$fitted <- fitted(lm2)
+ggplot(graph_pop_and_expend, aes(x = log(average_population), y = log(average_expenditure_percapita))) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  ylab("Log transformation of Expenditure per capita)") +
+  xlab("Log transformation of Average population")
+```
+
 ```{r scatter-x-y}
 #| echo: false
 #| warning: false
 #| message: false
-#| fig-cap: "Scatter plot of population (x-axis) and expenditure per capita (y-axis) for a simple linear regression with expenditure per capita as the response and population as the predictor."
+#| fig-cap: "Scatter plot of population (x-axis) and expenditure per capita (y-axis) for a simple linear regression with expenditure per capita as the response and population as the predictor. Showing a very weak negative relation between expenditure per capita and population"
 
 # graphing expenditure and population then fitting a line to it
 ggplot(graph_pop_and_expend,
@@ -187,7 +221,7 @@ ggplot(graph_pop_and_expend,
 ```
 
 ```{r residuals-fitted}
-#| fig-cap:  "Scatter plot of fitted values (x-axis) and residuals (y-axis) for a simple linear regression with expenditure per capita as the response and population as the predictor."
+#| fig-cap:  "Scatter plot of fitted values (x-axis) and residuals (y-axis) for a simple linear regression with expenditure per capita as the response and population as the predictor. Showing a clustering of points around higher fitted values"
 #| echo: false
 #creating fitted vs residuals graph
 ggplot(plot_dat, aes(x = fitted, y = resid)) +
@@ -209,7 +243,7 @@ ggplot(plot_dat,aes(sample=resid))+
   xlab("Theoretical quantile")
 ```
 ```{r resid}
-#| fig-cap:  "Scatter plot of index (x-axis) and residuals (y-axis) for a simple linear regression with expenditure per capita as the response and population as the predictor."
+#| fig-cap:  "Scatter plot of index (x-axis) and residuals (y-axis) for a simple linear regression with expenditure per capita as the response and population as the predictor Showing a fluctuating pattern."
 #| echo: false
 # graphing residual for independence check
 ggplot(resid_index, aes(x = indexx, y = resid)) +

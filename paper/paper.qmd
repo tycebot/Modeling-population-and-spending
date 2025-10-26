@@ -4,7 +4,7 @@ author: "Terrell Enoru"
 thanks: "Project repository available at:[https://github.com/tycebot/Modeling-population-and-spending](https://github.com/tycebot/Modeling-population-and-spending)."
 date: today
 date-format: long
-abstract: "California's rising government debt over the past decade necessitates careful examination of municipal spending efficiency. To analyze spending efficiency I use data on expenditure per capita for all california cities over the past 20 years. I use regression analysis to model the relationship between population size(the predictor) and per capita spending(the response varible). Then hypothesis testing is used on the slope to determine whether large cities benefit from economies of scale. The results were that there was not enough statistical evidence to claim that expinditure per capita decreased as population increased which is significant because it implies that the continued expansion of large cities which serve as the State's primary economic growth engine will not result in a less efficient expenditure."
+abstract: "California's rising government debt over the past decade necessitates careful examination of municipal spending efficiency. To analyze spending efficiency I use data on expenditure per capita for all California cities over the past 20 years. I use regression analysis to model the relationship between population size(the predictor) and per capita spending(the response variable). Then hypothesis testing is used on the slope to determine whether large cities benefit from economies of scale. The results were that there was not enough statistical evidence to claim that expenditure per capita decreased as population increased which is significant because it implies that the continued expansion of large cities which serve as the State's primary economic growth engine will not result in a reduction in spending efficiency."
 format: pdf
 bibliography: references.bib
 number-sections: true
@@ -23,49 +23,43 @@ library(tidyverse)
 #Import Dataset
 expenditure<-read.csv(file = "City_Expenditures_Per_Capita.csv")
 
-new_ex<-expenditure |> 
-  mutate(across(c("Estimated.Population","Total.Expenditures","Expenditures.Per.Capita"), ~  na_if(.,0))) |> 
-  na.omit() |> 
-  group_by(Entity.Name) |> 
-  count(name='row_count') |> 
-  arrange(desc(row_count)) |> 
-  filter(row_count>18)
-
-city_filter<-new_ex[["Entity.Name"]]
+expenditure_clean <- expenditure %>%
+  mutate(
+    Total.Expenditures = na_if(Total.Expenditures, 0),
+    Estimated.Population = na_if(Estimated.Population, 0),
+    Expenditures.Per.Capita = na_if(Expenditures.Per.Capita, 0)
+  ) %>%
+  na.omit()
 
 filtered_expenditure<-expenditure |> 
-  filter(Entity.Name %in% city_filter) |> 
-  filter(Fiscal.Year>2004) |> 
-  na.omit() |> 
-  group_by(Entity.Name) |> 
-  summarise(average_expenditure_percapita=round(mean(Expenditures.Per.Capita)),
-            average_population=round(mean(Estimated.Population)),
-            average_expenditure=round(mean(Total.Expenditures)))
+  filter(Fiscal.Year==2019)
 
-
+expenditure %>%
+  count(Fiscal.Year)
 ```
 # Introduction
-The motivation for this paper comes primarily from two sources. First seeing the rise in government expenditure and subsequent increase in debt prompted me to look into what lead to the increase in expenditure and how to make it more efficient. Subsequently when looking into government expenditure I found a paper which discovered that cities in Spanish experienced economy of scales effects up to a certain point [@spain_spend] which prompted me to think if that same efficiency exist in California. Some useful background on California state expenditure is that over the period from 2019 to 2024 state expenditure increased from around 300 billion to 494 billion. It currently is on pace to surpass to peak covid spending in 2021(499 billion) by the end of the year[@california_expenditure] which is why examining how efficiently this money is being spent is so important.
+The motivation for this paper comes from seeing the rise in government expenditure and subsequent increase in debt in the United States. This prompted me to look into ways to make government expenditure more efficient. I later found a paper which discovered that cities in Spain experienced economies of scale effects up to a certain point [@spain_spend], which led me to investigate whether those same efficiency gains existed in California. Some useful background on California state expenditure is that over the period from 2019 to 2024 state expenditure increased from around 300 billion to 494 billion. It is currently on pace to surpass peak covid spending (499 billion) by the end of the year[@california_expenditure], making it crucial to determine how efficiently this money is being spent.
 
-The knowledge gap being addressed is that of understanding the relationship between population and expenditure on the city level in the United States. Particularly for California there is no analysis on population as a mechanisms driving city spending in California. Most of the analysis focuses on a subset of expenditure (like health care or education). What this paper looks to do is examine expenditure on the more granular city level with the hope that by finding efficiency on the city level they transfer to the state level. In order to address the knowledge gap the simple linear regression model was fit to measure the relationship between estimated population(the predictor) and expenditure per capita(response). Then a one sided hypothesis testing was done on the slope of the regression model to determine whether or not large cities benefit from economies of scale in their spending.
+The knowledge gap being addressed is understanding the relationship between population and expenditure on the city level in California. Most of the analysis of expenditure focuses on a subset of expenditure (like health care or education). What this paper looks to do is examine expenditure on the more granular city level with the hope that measures of spending efficiency on the city level translate to the state level. In order to address the knowledge gap the simple linear regression model was fit to measure the relationship between estimated population(the predictor) and expenditure per capita(response). Then a one sided hypothesis testing was done on the slope of the regression model to determine whether large cities experience economies of scale in their spending.
 
-The structure of the the project is divided into four sections @sec-data,@sec-methods,@sec-results, and @sec-refs. @sec-data introduces the data used in this analysis including limitations,definitions, and why it's important. @sec-methods explains the statistical methods used for the analysis. @sec-results discusses the results of the analysis as well as what can be gleaned from these results and what are the restrictions. @sec-discussion provides an overview on the project the results any shortcomings and then any future extensions.Finally @sec-refs contains the citations for any external sources used in the paper.
+The structure of the project is divided into four sections @sec-data,@sec-methods,@sec-results, and @sec-refs. @sec-data introduces the data used in this analysis including limitations,definitions, and why the data is relevant. @sec-methods explains the statistical methods used for the analysis. @sec-results discusses the results of the analysis as well as what can be gleaned from these results. @sec-discussion provides an overview on the project before going into the results. It also addresses potential shortcomings and any future extensions.Finally @sec-refs contains the citations for any external sources used in the paper.
 
 # Data{#sec-data}
-The California capital expenditure data set is provided by the California State Controller's Office[@Matthew_2025]. Each row in this data set represents the expenditure per capita of a particular city in California at the end of a fiscal year. The key variables are entity name which is the name of the city,fiscal year(July 1 of the current year to June 30 of the next year) which is the year for which each expenditure per capita is calculated ,total expenditure which is the gross expenditure of a particular city over the fiscal year, estimated population which is the population of the city based on the Housing Unit Method which extrapolates population by taking housing units adjusting for occupation and then using that to estimate household population then combining that with estimates for "group quarters population"(essentially everyone in nontraditional households like dorms and prisons) to get the overall population estimate(more details in reference),and expenditures per capita which is the total expenditures divided by estimated population.The data is grouped by city,year, as well as binned into three groups for large medium and small sized cities.The limitations for the data set are as follows the estimated population does a bad job of measuring homeless because of it's reliance on housing units,the years are limited to a twenty year period from 2003 to 2023,the estimated population can double count those that move until they register their new address, and the expenditures measures are both skewed over the covid period (2020-2023). There are 29 cities missing at least one year of these 8 are missing one year,8 are missing 2 years,4 are missing three years, and 7 are missing 5 or more.Since all the years missing come from the tail end of the collection range(eg if a city is missing 2 years they are always the oldest 2 years so 2003 and 2004) we will be filtering the cities to only those with data from 2005 to 2023 in order to  make it so that all cities have the same amount of data while keeping the vast majority (98%) of the data. We also converted any 0 in the expenditure,expenditure per capita, and total expenditure to null and then filtered out those rows of which there were 5.By analyzing how much money is spent by a city over an extended period of time for a cities with a variety of different populations we can reasonably ascertain the relationship between expenditure and the population. However the key assumptions are that the population measurement is accurate relative to other cities in the data set(meaning if it underestimates or overestimates the population then it does it consistently) and that the cities are correctly reporting their expenditures to the state.
+The California capital expenditure data set is provided by the California State Controller's Office[@Matthew_2025]. Each row in this data set represents the expenditure per capita of a particular city in California over a fiscal year. The key variables are entity name which is the name of the city,fiscal year(July 1 of the current year to June 30 of the next year) which is the year each expenditure per capita is calculated, total expenditure which is the gross expenditure of a particular city over the fiscal year, expenditures per capita which is total expenditures divided by estimated population, and estimated population which is the population of the city based on the Housing Unit Method. The Housing Unit Method extrapolates population by taking housing units and adjusting for occupation  then combines that with estimates for "group quarters population"(essentially everyone in nontraditional households like dorms and prisons) to get the overall population estimate(more details in reference).
+The data is limited to the fiscal year 2019 to reduce temporal dependence and because it is the most recent non-covid year with records for every city. Other limitations for the data set are that the estimated population does a bad job of measuring the homeless population(because of it's reliance on housing units) and the estimated population can double count those that move until they register their new address. By analyzing how much money is spent by a city over a fiscal year for cities with a variety of different populations we can reasonably ascertain the relationship between expenditure and the population. The key assumptions for this data set is that the population measurement is accurate relative to other cities in the data set(meaning if it underestimates or overestimates the population then it does it consistently) and that the cities are correctly reporting their expenditures to the state.
 
 
 ```{r}
 #| include: false
 #filtering outliers for graph
 graph_avg_expenditure<-filtered_expenditure |> 
-  filter(average_expenditure_percapita<quantile(average_expenditure_percapita,0.95))
+  filter(Expenditures.Per.Capita<quantile(Expenditures.Per.Capita,0.95))
 
 graph_total_expenditure<-filtered_expenditure |> 
-  filter(average_expenditure<quantile(average_expenditure,0.95))
+  filter(Total.Expenditures<quantile(Total.Expenditures,0.95))
 
 graph_population<-filtered_expenditure |> 
-  filter(average_population<quantile(average_population,0.95))
+  filter(Estimated.Population<quantile(Estimated.Population,0.95))
 ```
 
 ```{r fig-capita-expenditure}
@@ -74,7 +68,7 @@ graph_population<-filtered_expenditure |>
 #| message: false
 #| fig-cap: "Histogram of average expenditure of each city which appears approximately normal but right skewed."
 #creating histogram of per capita expenditure
-ggplot(data=graph_avg_expenditure,aes(x=average_expenditure_percapita))+
+ggplot(data=graph_avg_expenditure,aes(x=Expenditures.Per.Capita))+
   geom_histogram()+
   xlab("Expenditure Per Capita")+
   ylab("Number of Cities")
@@ -87,7 +81,7 @@ ggplot(data=graph_avg_expenditure,aes(x=average_expenditure_percapita))+
 #| message: false
 #| fig-cap: "Histogram of total expenditure of each city which is heavily right skewed"
 #creating histogram of total expenditure
-ggplot(data=graph_total_expenditure,aes(x=average_expenditure))+
+ggplot(data=graph_total_expenditure,aes(x=Total.Expenditures))+
   geom_histogram()+
   xlab("Total Expenditure")+
   ylab("Number of Cities")
@@ -100,23 +94,24 @@ ggplot(data=graph_total_expenditure,aes(x=average_expenditure))+
 #| fig-cap: "Histogram of population of each city which is heavily right skewed."
 #| echo: false
 #creating histogram of population
-ggplot(data=graph_population,aes(x=average_population))+
+ggplot(data=graph_population,aes(x=Estimated.Population))+
   geom_histogram()+
   xlab("Population")+
   ylab("Number of Cities")
 ```
 
 # Methods {#sec-methods}
-We adopt a simple linear regression model with expenditure per capita as the response and population as the predictor. Let $Y_i$ denote expenditure per capita and $X_i$ denote population for the $Y_i$ year in our dataset. The model can be written as 
+We adopt a simple linear regression model with expenditure per capita as the response and population as the predictor. Let $Y_i$ denote expenditure per capita and $X_i$ denote population for the ith observation in our dataset. The model can be written as 
 $Y_i = \beta_0 + \beta_1 X_i + \epsilon_i$
-where $\beta_0$ represents the expected population when the expenditure is 0,$\beta_1$ represents the average increase in expenditure per capita for every individual added to the population, and $\epsilon_i$ represents the change in expenditure per capita not captured by the  population
-The lm function is the a function used to create linear models.
+where $\beta_0$ represents the expected expenditure when the population is 0,$\beta_1$ represents the average increase in expenditure per capita for every individual added to the population, and $\epsilon_i$ represents the change in expenditure per capita not captured by the  population
+The lm function is the function used to create linear models.
 
-In order to evaluate whether or not high population cities get an economy of scales bonus we use a one sided hypothesis test to determine whether there is a negative association between expenditure per capita($Y$) and population($X$). The type 1 error rate will be set at 0.05 and the null and alternative hypothesis are as follows
+There are three key assumptions about the errors which allows us to use a t distribution for hypothesis testing the coefficients . The assumptions are that $\epsilon_i$ are independent of each other,have constant variance $Var(\epsilon_i)=\sigma^2$, and are normally distributed $\epsilon_i$ ~ $N(0,\sigma^2)$.
+In order to evaluate whether or not high population cities get an economies of scales bonus we use a one sided hypothesis test to determine whether there is a negative association between expenditure per capita($Y$) and population($X$). The type 1 error rate will be set at 0.05 and the null and alternative hypothesis are as follows
 
-$H_0: B_1 >= 0$
+$H_0: \beta_1 >= 0$
 
-$H_1: B_1<0$
+$H_1: \beta_1 <0$
 
 I implemented this analysis using the R programming language[@R_language] and the tidyverse package[@tidyv] for data cleaning and plot creation.
 
@@ -128,13 +123,13 @@ I implemented this analysis using the R programming language[@R_language] and th
 #| warning: false
 #| message: false
 #fitting model to data
-lm_fit<-lm(average_expenditure_percapita~average_population,
+lm_fit<-lm(Expenditures.Per.Capita~Estimated.Population,
            data = filtered_expenditure)
 round(coefficients(lm_fit)[2], 3)
 round(coefficients(lm_fit)[1], 3)
 ```
 
-The estimated slope parameter is $b_1=$ `r round(coefficients(lm_fit)[2], 3)`. In other words, for each individual added to the population the expected change in the expenditure per capita is -0.007. The estimated intercept is $b_0=$ `r round(coefficients(lm_fit)[1], 3)`. In other words the expected population of a city with no expenditure per capita is `r round(coefficients(lm_fit)[1], 3)`.
+The estimated slope parameter is $b_1=$ `r round(coefficients(lm_fit)[2], 3)`. In other words, for each individual added to the population the expected change in the expenditure per capita is -0.007. The estimated intercept is $b_0=$ `r round(coefficients(lm_fit)[1], 3)`. In other words the expected expenditure per capita of a city with a population of zero is `r round(coefficients(lm_fit)[1], 3)`.
 
 ```{r hypothesis-test}
 #| include: false
@@ -142,22 +137,22 @@ The estimated slope parameter is $b_1=$ `r round(coefficients(lm_fit)[2], 3)`. I
 #| message: false
 #extracting variables of interest then using them to conduct t test
 lm_summary<-summary(lm_fit)
-b1<-lm_summary$coefficients["average_population","Estimate"]
-b1_se<-lm_summary$coefficients["average_population","Std. Error"]
+b1<-lm_summary$coefficients["Estimated.Population","Estimate"]
+b1_se<-lm_summary$coefficients["Estimated.Population","Std. Error"]
 t<-b1/b1_se
 degrees_of_freedom<-lm_summary$df[2]
-t_test<-pt(t,degrees_of_freedom)
+p_value<-pt(t,degrees_of_freedom)
 ```
-Since the t value is greater than the p value we fail to reject the null hypothesis that the slope is greater than or equal to 0.
+Since the p value 0.34 is greater than the significance level(a=0.05) we fail to reject the null hypothesis that the slope is greater than or equal to 0.
 
-The model and hypothesis test rely on 5 key assumptions which are that the regression function is linear, the error terms have equal variance, the error terms are independent, the error terms have a mean of zero, and the error terms are normally distributed. Based on the scatter plot of population against average expenditure the regression function does not seem to be linear.The relatively even spread of points above and below the zero line suggest the error terms have a mean of zero(there do seem to be a few more below the line but the ones above have a higher value on average).Equal variance does seem to hold for most of the fitted values but the range of residuals for fitted values below 1400 definitely seems smaller which violates the assumption of equal variance. Based on the curve pattern in the qqplot it can be inferred that the error terms are not normally distributed. Based on the up and down pattern in the residuals vs index plot it can be inferred that the errors are not independent. Since almost all the assumptions necessary for hypothesis testing and most for linear regression were broken(except for the mean of errors being 0) we cannot trust the outcomes from the inference on the slope.
+The model and hypothesis test rely on 5 key assumptions which are that the regression function is linear, the error terms have equal variance, the error terms are independent, and the error terms are normally distributed. Based on the scatter plot of population against average expenditure the regression function does not seem to be linear.Equal variance does seem to hold for most of the fitted values but the range of residuals for fitted values below 1400 definitely seems smaller which violates the assumption of equal variance. Based on the curve pattern in the Q-Q plot it can be inferred that the error terms are not normally distributed. Based on the up and down pattern in the residuals vs index plot it can be inferred that the errors are not independent. Since almost all the assumptions necessary for hypothesis testing are not met we cannot trust the outcomes from the inference on the slope because we can not trust that b1 is an unbiased estimator of `r`$\beta_1$`.
 ```{r}
 #| include: false
 #cleaning data for plots and setting up df for plots
 graph_pop_and_expend<-filtered_expenditure |> 
-  filter(average_population<quantile(average_population,0.95) & average_expenditure_percapita<quantile(average_expenditure_percapita,0.95))
+  filter(Estimated.Population<quantile(Estimated.Population,0.95) & Expenditures.Per.Capita<quantile(Expenditures.Per.Capita,0.95))
 
-lm_fit1<-lm(average_expenditure_percapita~average_population,
+lm_fit1<-lm(Expenditures.Per.Capita~Estimated.Population,
            data = graph_pop_and_expend)
 
 plot_dat<-data.frame(
@@ -173,31 +168,29 @@ resid_index<- data.frame(
 
 ```{r}
 #| include: false
-##LOG TRANSFORMATION OF X SEEMS TO MAKE FUNCTION LINEAR REVISE PROJECT TO ACCOUNT FOR THIS AFTER PAPER 2 SUBMISSION ALSO FILTER TO 95% PERCENTILE FROM THE GETGO BECAUSE OF EXTREME OUTLIERS
 
-
-lm2 <- lm(average_expenditure_percapita ~ log(average_population),
+lm2 <- lm(Expenditures.Per.Capita ~ log(Estimated.Population),
           data = graph_pop_and_expend)
 graph_pop_and_expend$fitted <- fitted(lm2)
-ggplot(graph_pop_and_expend, aes(x = log(average_population), y = average_expenditure_percapita)) +
+ggplot(graph_pop_and_expend, aes(x = log(Estimated.Population), y = Expenditures.Per.Capita)) +
   geom_point() +
   geom_smooth(method = "lm", se = FALSE) +
   ylab("Log transformation Expenditure per capita)") +
   xlab("Average population")
 
-lm2 <- lm(average_expenditure_percapita ~ sqrt(average_population),
+lm2 <- lm(Expenditures.Per.Capita ~ sqrt(Estimated.Population),
           data = graph_pop_and_expend)
 graph_pop_and_expend$fitted <- fitted(lm2)
-ggplot(graph_pop_and_expend, aes(x = sqrt(average_population), y = average_expenditure_percapita)) +
+ggplot(graph_pop_and_expend, aes(x = sqrt(Estimated.Population), y = Expenditures.Per.Capita)) +
   geom_point() +
   geom_smooth(method = "lm", se = FALSE) +
   ylab("Square root transformation Expenditure per capita)") +
   xlab("Average population")
 
-lm2 <- lm(log(average_expenditure_percapita) ~ log(average_population),
+lm2 <- lm(log(Expenditures.Per.Capita) ~ log(Estimated.Population),
           data = graph_pop_and_expend)
 graph_pop_and_expend$fitted <- fitted(lm2)
-ggplot(graph_pop_and_expend, aes(x = log(average_population), y = log(average_expenditure_percapita))) +
+ggplot(graph_pop_and_expend, aes(x = log(Estimated.Population), y = log(Expenditures.Per.Capita))) +
   geom_point() +
   geom_smooth(method = "lm", se = FALSE) +
   ylab("Log transformation of Expenditure per capita)") +
@@ -208,11 +201,11 @@ ggplot(graph_pop_and_expend, aes(x = log(average_population), y = log(average_ex
 #| echo: false
 #| warning: false
 #| message: false
-#| fig-cap: "Scatter plot of population (x-axis) and expenditure per capita (y-axis) for a simple linear regression with expenditure per capita as the response and population as the predictor. Showing a very weak negative relation between expenditure per capita and population"
+#| fig-cap: "Scatter plot of population (x-axis) and expenditure per capita (y-axis) for a simple linear regression with expenditure per capita as the response and population as the predictor. With a straight trend line showing no relationship between populaiton and expenditure. The confidence bands show that the variance of expenditure per capita is larger at higher populations. "
 
 # graphing expenditure and population then fitting a line to it
 ggplot(graph_pop_and_expend,
-       aes(average_population,average_expenditure_percapita))+
+       aes(Estimated.Population,Expenditures.Per.Capita))+
   geom_point()+
   geom_smooth(method="lm")+
   ylab("Expenditure per capita")+
@@ -221,19 +214,19 @@ ggplot(graph_pop_and_expend,
 ```
 
 ```{r residuals-fitted}
-#| fig-cap:  "Scatter plot of fitted values (x-axis) and residuals (y-axis) for a simple linear regression with expenditure per capita as the response and population as the predictor. Showing a clustering of points around higher fitted values"
+#| fig-cap:  "Scatter plot of fitted values (x-axis) and residuals (y-axis) for a simple linear regression with expenditure per capita as the response and population as the predictor."
 #| echo: false
 #creating fitted vs residuals graph
 ggplot(plot_dat, aes(x = fitted, y = resid)) +
   geom_point() +
   geom_hline(yintercept = 0, linetype = "dashed") +
-  ylab("Residual (observed - fitted)") +
+  ylab("Residual") +
   xlab("Fitted value") +
   ggtitle("Residuals vs. fitted value plot")
 ```
 
 ```{r qqplot}
-#| fig-cap:  "Quantile-quantile plot of residuals (y-axis) for a simple linear regression with expenditure per capita as the response and population as the predictor."
+#| fig-cap:  "Quantile-quantile plot of residuals for a simple linear regression with expenditure per capita as the response and population as the predictor.With the diagonal line representing what it would look like if the sample quantile perfectly matched up with the Sample quantile. The deviation of the points from the theoretical quantile suggest the residuals aren't normally distributed."
 #| echo: false 
 # creating qqplot
 ggplot(plot_dat,aes(sample=resid))+
@@ -242,26 +235,15 @@ ggplot(plot_dat,aes(sample=resid))+
   ylab("Sample quantile")+
   xlab("Theoretical quantile")
 ```
-```{r resid}
-#| fig-cap:  "Scatter plot of index (x-axis) and residuals (y-axis) for a simple linear regression with expenditure per capita as the response and population as the predictor Showing a fluctuating pattern."
-#| echo: false
-# graphing residual for independence check
-ggplot(resid_index, aes(x = indexx, y = resid)) +
-  geom_point() +                   
-  geom_line() +                    
-  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
-  labs(title = "Residuals vs. Index",
-       x = "Index",
-       y = "Residuals") +
-  theme_minimal()
-```
+
 # Discussion {#sec-discussion}
-In conclusion this paper was looking to examine whether there were economy of scale bonuses for big cities in terms of spending efficiency. It did this by looking at a data set of expenditure by capita and population for every city in California over a 20 year period from 2023. A regression model was then fit to this data with expenditure per capita as the response variable and population as the predictor which yielded a slope of -0.007. A one sided hypothesis test was then conducted on the slope with a type 1 error rate of 0.05 . From the results of our regression model and hypothesis test we can conclude that there is not enough statistical evidence to reject the null hypothesis that the slope is greater than or equal to zero.
+In conclusion this paper was looking to examine whether large cities benefited from economies of scale bonuses in 2019. It did this by looking at a data set of expenditure per capita and population for every city in California over a 20 year period from 2023. A regression model was then fit to this data with expenditure per capita as the response variable and population as the predictor which yielded a slope of -0.005. A one sided hypothesis test was then conducted on the slope with a type 1 error rate of 0.05 yielding a p-value of 0.34. From the results of our regression model and hypothesis test we can conclude that there is not enough statistical evidence to reject the null hypothesis that the slope is greater than or equal to zero.
 
-The key finding from my research was that there is not a significant economy of scale bonus granted to larger cities when spending. Although based on the slope there also does not seem to be a positive association between population and expenditure per capita. This would lead us to suggest that there is not a strong linear association between population and expenditure per capita. The implications of this are twofold. First the mandatory new costs like added bureaucracy that is necessitated when administering a larger city does not seem to have a particularly negative impact on city expenditure. Second the economies of scale one would assume a larger city would gain(and which were found in a previous paper on the subject in Spain[@spain_spend]) either do not exist or get eaten up by some other confounding factor like the bureaucracy theory I put forth earlier. Ultimately whatever the cause the results suggest that the continued movement of people to large cities should not have a negative impact on spending efficiency.
+The key finding from my research was that there is not a significant economies of scale bonus granted to larger cities when spending. Although based on the slope there also does not seem to be a positive association between population and expenditure per capita. This suggest that there is not a linear association between population and expenditure per capita. The implications of this are two-fold. Firstly mandatory new costs,like added bureaucracy, that is necessitated when administering a larger city does not seem to have a particularly negative impact on city expenditure. Second the economies of scale one would assume a larger city would gain(and which were found in a previous paper on the subject in Spain[@spain_spend]) do not exists in California. Ultimately the results suggest that the continued movement of people to large cities should not necessarily have a negative impact on spending efficiency.
 
-There are a few key weaknesses to this study. First because of the scale of California's big cities there are a few huge outliers when it comes to population particularly Los Angeles,San Diego, San Francisco, and San Jose have populations that dwarf the rest of the state making it so that they have an out sized impact on the relationship between population and per capita expenditure. Second because the population is calculated by residents it makes it so that cities like Vernon which mainly serve as hubs for business and industry rather than residence can have a relatively meager population(159) but very significant expenditure(277024003). This points to a broader problem with using expenditure per capita as a proxy for spending efficiency which is that it completely ignores the other side of fiscal efficiency which is revenue. Even if the expenditure per person decreased due to some economy of scale bonus(which was not found to be true) if the revenue growth was slower than the expenditure growth (even if the rate of expenditure growth was decreasing) then even though the spending efficiency would look great the actual fiscal efficiency would tell the opposite story.
+There are a few key weaknesses to this study. First, because of the scale of California's major cities there are a three huge outliers when it comes to population. These outliers (Los Angeles,San Diego, San Francisco) all have populations over a million while the median population of a city in California in 2019 was 30884. Therefore they have an out sized impact on the relationship between population and per capita expenditure. Second, because the population is calculated by residents it makes it so that cities like Vernon which mainly serve as hubs for business and industry can have a relatively meager population(301) but very significant expenditure(848814). This points to a broader problem with using expenditure per capita as a proxy for spending efficiency which is that it completely ignores revenue. Thus all conclusions about expenditure's impact on spending efficiency make the assumption that revenue scales with population which is a very strong assumption.
 
 Potential improvements that can be done to this study is combine the expenditure data set with the revenue data set. We could then infer the profit from the difference between the revenue and expenditures and use that to better measure the relationship between population and fiscal health. Potential extensions of this work would be to apply the profit analysis mentioned previously to states outside of California. The results could then be compared to see if the lack of an economies of scales bonus was due to factors specific to California or more widely common. Finally combining population with some kind of economic metric(possibly gdp per capita) would do a better job at answering the broader question of as a city grows(both economically and in population) how does that effect the health of it's finances.
+
 
 # Works Cited {#sec-refs}
